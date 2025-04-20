@@ -22,6 +22,8 @@ type Bar struct {
 type Player struct {
 	Bar       Bar
 	Points    int16
+	LeftKey   int
+	RightKey  int
 	RoundWon  bool
 	LastTouch bool
 }
@@ -60,6 +62,7 @@ func (b *Ball) genRandomStart() {
 func main() {
 	var wonText string
 	rl.InitWindow(800, 450, "PonGo")
+	rl.SetWindowMonitor(0)
 	game := Game{
 		Round: 1,
 		Player1: Player{
@@ -76,6 +79,8 @@ func main() {
 				},
 				Color: rl.RayWhite,
 			},
+			LeftKey:   rl.KeyA,
+			RightKey:  rl.KeyD,
 			Points:    0,
 			RoundWon:  false,
 			LastTouch: false,
@@ -94,6 +99,8 @@ func main() {
 				},
 				Color: rl.RayWhite,
 			},
+			LeftKey:   rl.KeyLeft,
+			RightKey:  rl.KeyRight,
 			Points:    0,
 			RoundWon:  false,
 			LastTouch: false,
@@ -130,13 +137,13 @@ func main() {
 			ball.genRandomStart()
 		}
 
-		if !game.Paused && rl.IsKeyDown(rl.KeyLeft) {
+		if !game.Paused && rl.IsKeyDown(int32(game.Player1.LeftKey)) {
 			if game.Player1.Bar.Shape.Y >= 10 {
 				game.Player1.Bar.Shape.Y -= int32(game.Player1.Bar.Speed.Y)
 			}
 		}
 
-		if !game.Paused && rl.IsKeyDown(rl.KeyRight) {
+		if !game.Paused && rl.IsKeyDown(int32(game.Player1.RightKey)) {
 			if game.Player1.Bar.Shape.Y <= int32(rl.GetScreenHeight())-game.Player1.Bar.Shape.Height-10 {
 				game.Player1.Bar.Shape.Y += int32(game.Player1.Bar.Speed.Y)
 			}
@@ -146,13 +153,17 @@ func main() {
 			ball.Position.X += ball.Speed.X
 			ball.Position.Y += ball.Speed.Y
 
-			// Check Ball collision for pBar 1
-			if (ball.Position.X >= float32(rl.GetScreenWidth()-ball.Radius)) ||
+			// Check Ball collision for Player 1 Bar
+			// TODO: Player 1 and 2 should only touch the ball once (in part vecause teh ball get's kind og buggy sometimes and hits the bar multiple times) !game.Player1.LastTouch && ()
+			if ball.Position.X >= float32(rl.GetScreenWidth()-ball.Radius) ||
 				(ball.Position.X-float32(ball.Radius) < float32(game.Player1.Bar.Shape.X+game.Player1.Bar.Shape.Width+10) && ball.Position.X-float32(ball.Radius) > float32(game.Player1.Bar.Shape.X) &&
 					(ball.Position.Y-float32(ball.Radius) > game.Player1.Bar.Shape.ToFloat32().Y-5 && ball.Position.Y-float32(ball.Radius) < float32(game.Player1.Bar.Shape.Y+game.Player1.Bar.Shape.Height+10))) {
 				game.Player1.LastTouch = !game.Player1.LastTouch
 				ball.Speed.X *= -1.0
 			}
+
+			// TODO: Add Player 2 collisions
+
 			if (ball.Position.Y >= float32(rl.GetScreenHeight()-ball.Radius)) || (ball.Position.Y <= float32(ball.Radius)) {
 				ball.Speed.Y *= -1.0
 			}
@@ -181,19 +192,32 @@ func main() {
 		rl.ClearBackground(rl.DarkGray)
 		rl.DrawLine(int32(rl.GetScreenWidth()/2), 0, int32(rl.GetScreenWidth()/2), int32(rl.GetScreenHeight()), rl.RayWhite)
 
+		// Draw Player 1 Bar
 		rl.DrawRectangle(game.Player1.Bar.Shape.X, game.Player1.Bar.Shape.Y, game.Player1.Bar.Shape.Width, game.Player1.Bar.Shape.Height, game.Player1.Bar.Color)
 
+		// TODO: Add Player 2 Bar
+
+		// Draw Ball
 		rl.DrawCircleV(ball.Position, float32(ball.Radius), ball.Color)
+
+		// UI
 		rl.DrawText("PRESS 'P' to PAUSE THE GAME", 10, int32(rl.GetScreenHeight())-25, 20, rl.LightGray)
 		roundText := fmt.Sprintf("ROUND %03d", game.Round)
-		rl.DrawTextEx(rl.GetFontDefault(), roundText, rl.Vector2{X: float32(rl.GetScreenWidth()/2 - int(rl.MeasureText(roundText, 20)/2)), Y: 10}, 20, 3, rl.LightGray)
+		rl.DrawTextEx(rl.GetFontDefault(), roundText, rl.Vector2{X: float32(rl.GetScreenWidth()/2 - int(rl.MeasureText(roundText, 20)/2)), Y: 10}, 20, 3, rl.Green)
+		// Draw Points
+		player1PointsText := fmt.Sprintf("Player 1: %d", game.Player1.Points)
+		player2PointsText := fmt.Sprintf("Player 2: %d", game.Player2.Points)
+		rl.DrawText(player1PointsText, int32(rl.GetScreenWidth()/2)-rl.MeasureText(roundText, 20)/2-rl.MeasureText(player1PointsText, 20)-20, 10, 20, rl.RayWhite)
+		rl.DrawText(player2PointsText, int32(rl.GetScreenWidth()/2)+rl.MeasureText(roundText, 20)/2+20, 10, 20, rl.RayWhite)
 
+		// Game Paused
 		if game.Paused && ((game.FramesCounter/30)%2) != 0 {
 			rl.DrawText("PAUSED", 350, 200, 30, rl.Gray)
 		}
 
+		// Round Won Text
 		if game.RoundFinished {
-			rl.DrawText(wonText, int32(rl.GetScreenWidth()/2)-rl.MeasureText(wonText, 30)/2, int32(rl.GetScreenHeight()/2-15), 30, rl.RayWhite)
+			rl.DrawText(wonText, int32(rl.GetScreenWidth()/2)-rl.MeasureText(wonText, 30)/2, int32(rl.GetScreenHeight()/2-15), 30, rl.Green)
 		}
 
 		rl.DrawFPS(10, 10)
