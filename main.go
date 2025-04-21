@@ -9,12 +9,12 @@ import (
 type Ball struct {
 	Position rl.Vector2
 	Speed    rl.Vector2
-	Radius   int
+	Radius   float32
 	Color    rl.Color
 }
 
 type Bar struct {
-	Shape rl.RectangleInt32
+	Rec   rl.Rectangle
 	Speed rl.Vector2
 	Color rl.Color
 }
@@ -39,7 +39,7 @@ type Game struct {
 
 func (b *Ball) genRandomStart() {
 	b.Position.X = float32(rl.GetScreenWidth() / 2)
-	b.Position.Y = float32(rl.GetRandomValue(int32(0+b.Radius), int32(rl.GetScreenHeight()-b.Radius)))
+	b.Position.Y = float32(rl.GetRandomValue(int32(0+b.Radius), int32(rl.GetScreenHeight()-int(b.Radius))))
 	newXSpeedDirection := rl.GetRandomValue(-1, 1)
 	newYSpeedDirection := rl.GetRandomValue(-1, 1)
 	// TODO: Idk how to do it better atm
@@ -67,9 +67,9 @@ func main() {
 		Round: 1,
 		Player1: Player{
 			Bar: Bar{
-				Shape: rl.RectangleInt32{
+				Rec: rl.Rectangle{
 					X:      20,
-					Y:      int32(rl.GetScreenHeight()) / 2,
+					Y:      float32(rl.GetScreenHeight()) / 2,
 					Width:  10,
 					Height: 75,
 				},
@@ -87,9 +87,9 @@ func main() {
 		},
 		Player2: Player{
 			Bar: Bar{
-				Shape: rl.RectangleInt32{
-					X:      20,
-					Y:      int32(rl.GetScreenHeight()) / 2,
+				Rec: rl.Rectangle{
+					X:      float32(rl.GetScreenWidth()) - 20,
+					Y:      float32(rl.GetScreenHeight()) / 2,
 					Width:  10,
 					Height: 75,
 				},
@@ -115,8 +115,8 @@ func main() {
 			Y: float32(rl.GetScreenHeight()) / 2.0,
 		},
 		Speed: rl.Vector2{
-			X: 3.0,
-			Y: 2.0,
+			X: 6.0,
+			Y: 4.0,
 		},
 		Radius: 10,
 		Color:  rl.RayWhite,
@@ -133,21 +133,38 @@ func main() {
 		}
 
 		if rl.IsKeyPressed(rl.KeySpace) && game.RoundFinished {
+			game.Round += 1
 			game.RoundFinished = !game.RoundFinished
 			ball.genRandomStart()
 		}
 
+		// Player 1 movement
 		if !game.Paused && rl.IsKeyDown(int32(game.Player1.LeftKey)) {
-			if game.Player1.Bar.Shape.Y >= 10 {
-				game.Player1.Bar.Shape.Y -= int32(game.Player1.Bar.Speed.Y)
+			if game.Player1.Bar.Rec.Y >= 10 {
+				game.Player1.Bar.Rec.Y -= float32(game.Player1.Bar.Speed.Y)
 			}
 		}
 
 		if !game.Paused && rl.IsKeyDown(int32(game.Player1.RightKey)) {
-			if game.Player1.Bar.Shape.Y <= int32(rl.GetScreenHeight())-game.Player1.Bar.Shape.Height-10 {
-				game.Player1.Bar.Shape.Y += int32(game.Player1.Bar.Speed.Y)
+			if game.Player1.Bar.Rec.Y <= float32(rl.GetScreenHeight())-game.Player1.Bar.Rec.Height-10 {
+				game.Player1.Bar.Rec.Y += float32(game.Player1.Bar.Speed.Y)
 			}
 		}
+		// End of player 1 movement
+
+		// Player 2 movement
+		if !game.Paused && rl.IsKeyDown(int32(game.Player2.LeftKey)) {
+			if game.Player2.Bar.Rec.Y >= 10 {
+				game.Player2.Bar.Rec.Y -= float32(game.Player2.Bar.Speed.Y)
+			}
+		}
+
+		if !game.Paused && rl.IsKeyDown(int32(game.Player2.RightKey)) {
+			if game.Player2.Bar.Rec.Y <= float32(rl.GetScreenHeight())-game.Player2.Bar.Rec.Height-10 {
+				game.Player2.Bar.Rec.Y += float32(game.Player2.Bar.Speed.Y)
+			}
+		}
+		// End of player 2 movement
 
 		if !game.Paused {
 			ball.Position.X += ball.Speed.X
@@ -155,16 +172,34 @@ func main() {
 
 			// Check Ball collision for Player 1 Bar
 			// TODO: Player 1 and 2 should only touch the ball once (in part vecause teh ball get's kind og buggy sometimes and hits the bar multiple times) !game.Player1.LastTouch && ()
-			if ball.Position.X >= float32(rl.GetScreenWidth()-ball.Radius) ||
-				(ball.Position.X-float32(ball.Radius) < float32(game.Player1.Bar.Shape.X+game.Player1.Bar.Shape.Width+10) && ball.Position.X-float32(ball.Radius) > float32(game.Player1.Bar.Shape.X) &&
-					(ball.Position.Y-float32(ball.Radius) > game.Player1.Bar.Shape.ToFloat32().Y-5 && ball.Position.Y-float32(ball.Radius) < float32(game.Player1.Bar.Shape.Y+game.Player1.Bar.Shape.Height+10))) {
-				game.Player1.LastTouch = !game.Player1.LastTouch
+			// if !game.Player1.LastTouch && (ball.Position.X-float32(ball.Radius) < float32(game.Player1.Bar.Rec.X+game.Player1.Bar.Rec.Width+10) &&
+			// 	ball.Position.X-float32(ball.Radius) > float32(game.Player1.Bar.Rec.X) && (ball.Position.Y-float32(ball.Radius) > game.Player1.Bar.Rec.Y-5 && ball.Position.Y-float32(ball.Radius) < float32(game.Player1.Bar.Rec.Y+game.Player1.Bar.Rec.Height+10))) {
+			// 	game.Player1.LastTouch = true
+			// 	game.Player2.LastTouch = false
+			// 	ball.Speed.X *= -1.0
+			// }
+
+			if !game.Player1.LastTouch && rl.CheckCollisionCircleRec(ball.Position, float32(ball.Radius), game.Player1.Bar.Rec) {
+				game.Player1.LastTouch = true
+				game.Player2.LastTouch = false
 				ball.Speed.X *= -1.0
 			}
 
 			// TODO: Add Player 2 collisions
+			// Check Ball collision for Player 2 Bar
+			// if !game.Player2.LastTouch && (ball.Position.X+float32(ball.Radius) < float32(game.Player2.Bar.Rec.X+game.Player2.Bar.Rec.Width+10) &&
+			// 	ball.Position.X+float32(ball.Radius) > float32(game.Player2.Bar.Rec.X) && (ball.Position.Y-float32(ball.Radius) > game.Player2.Bar.Rec.Y-5 && ball.Position.Y-float32(ball.Radius) < float32(game.Player2.Bar.Rec.Y+game.Player2.Bar.Rec.Height+10))) {
+			// 	game.Player1.LastTouch = false
+			// 	game.Player2.LastTouch = true
+			// 	ball.Speed.X *= -1.0
+			// }
+			if !game.Player2.LastTouch && rl.CheckCollisionCircleRec(ball.Position, float32(ball.Radius), game.Player2.Bar.Rec) {
+				game.Player1.LastTouch = false
+				game.Player2.LastTouch = true
+				ball.Speed.X *= -1.0
+			}
 
-			if (ball.Position.Y >= float32(rl.GetScreenHeight()-ball.Radius)) || (ball.Position.Y <= float32(ball.Radius)) {
+			if (ball.Position.Y >= (float32(rl.GetScreenHeight()) - ball.Radius)) || (ball.Position.Y <= float32(ball.Radius)) {
 				ball.Speed.Y *= -1.0
 			}
 		} else {
@@ -176,14 +211,12 @@ func main() {
 				game.Player2.RoundWon = true
 				game.Player2.Points += 1
 				wonText = fmt.Sprintf("Player 2 won Round %03d", game.Round)
-				game.Round += 1
 			}
-			if ball.Position.X > float32(rl.GetScreenWidth()+ball.Radius) {
+			if ball.Position.X > (float32(rl.GetScreenWidth()) + ball.Radius) {
 				game.RoundFinished = !game.RoundFinished
 				game.Player1.RoundWon = true
 				game.Player1.Points += 1
 				wonText = fmt.Sprintf("Player 1 won Round %03d", game.Round)
-				game.Round += 1
 			}
 		}
 
@@ -193,12 +226,13 @@ func main() {
 		rl.DrawLine(int32(rl.GetScreenWidth()/2), 0, int32(rl.GetScreenWidth()/2), int32(rl.GetScreenHeight()), rl.RayWhite)
 
 		// Draw Player 1 Bar
-		rl.DrawRectangle(game.Player1.Bar.Shape.X, game.Player1.Bar.Shape.Y, game.Player1.Bar.Shape.Width, game.Player1.Bar.Shape.Height, game.Player1.Bar.Color)
+		rl.DrawRectangleRec(game.Player1.Bar.Rec, game.Player1.Bar.Color)
 
 		// TODO: Add Player 2 Bar
+		rl.DrawRectangleRec(game.Player2.Bar.Rec, game.Player2.Bar.Color)
 
 		// Draw Ball
-		rl.DrawCircleV(ball.Position, float32(ball.Radius), ball.Color)
+		rl.DrawCircleV(ball.Position, ball.Radius, ball.Color)
 
 		// UI
 		rl.DrawText("PRESS 'P' to PAUSE THE GAME", 10, int32(rl.GetScreenHeight())-25, 20, rl.LightGray)
